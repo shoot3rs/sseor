@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction SSE Client - Auth Required</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .event-log {
+            background: #f5f5f5;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .event {
+            margin: 5px 0;
+            padding: 8px;
+            border-left: 3px solid #007bff;
+            background: white;
+            border-radius: 3px;
+        }
+
+        .event.error {
+            border-left-color: #dc3545;
+        }
+
+        .event.success {
+            border-left-color: #28a745;
+        }
+
+        .event.warning {
+            border-left-color: #ffc107;
+        }
+
+        .controls {
+            margin: 20px 0;
+        }
+
+        .auth-section {
+            background: #e9ecef;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .user-info-section {
+            background: #d1ecf1;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .transaction-section {
+            background: #d4edda;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .config-section {
+            background: #fff3cd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        input, button, select, textarea {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+
+        input[type="text"], input[type="password"], input[type="number"], textarea {
+            min-width: 300px;
+        }
+
+        textarea {
+            min-height: 100px;
+            font-family: monospace;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: black;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .form-group {
+            margin: 10px 0;
+        }
+
+        .form-group label {
+            display: inline-block;
+            width: 150px;
+            font-weight: bold;
+        }
+
+        .metrics {
+            background: #d4edda;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-connected {
+            background-color: #28a745;
+        }
+
+        .status-disconnected {
+            background-color: #dc3545;
+        }
+
+        .status-connecting {
+            background-color: #ffc107;
+        }
+
+        .status-authenticated {
+            background-color: #28a745;
+        }
+
+        .status-unauthenticated {
+            background-color: #dc3545;
+        }
+
+        .transaction-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background: white;
+        }
+
+        .transaction-id {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-processing {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .three-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+        }
+
+        .user-info {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .user-info-item {
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .user-info-label {
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .user-info-value {
+            color: #6c757d;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .role-badge {
+            background: #007bff;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .auth-required-notice {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+
+        @media (max-width: 768px) {
+            .two-column, .three-column {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Transaction SSE Client (Authentication Required)</h1>
+
+    <div class="auth-required-notice">
+        <strong>Authentication Required:</strong> This application requires a valid JWT token from Keycloak.
+        Please paste your Bearer token below to access transaction features.
+    </div>
+
+    <div class="card config-section">
+        <h3>Client Configuration</h3>
+        <div class="form-group">
+            <label for="countryCode">Country Code:</label>
+            <input type="text" id="countryCode" placeholder="GH" value="GH" maxlength="2">
+        </div>
+        <div class="form-group">
+            <label for="stateCode">State Code:</label>
+            <input type="text" id="stateCode" placeholder="GT" value="GT" maxlength="2">
+        </div>
+        <div class="form-group">
+            <label for="sseApiEndpoint">SSE API Endpoint:</label>
+            <input type="text" id="sseApiEndpoint" value="http://localhost:9090/api/v1/sse/transactions">
+        </div>
+        <div class="form-group">
+            <label for="restApiEndpoint">REST API Endpoint:</label>
+            <input type="text" id="restApiEndpoint" value="http://localhost:8080/api/v1/transactions/deposit">
+        </div>
+    </div>
+
+    <div class="card auth-section">
+        <h3>JWT Authentication</h3>
+        <div class="form-group">
+            <label for="bearerToken">Bearer Token:</label>
+            <textarea id="bearerToken" placeholder="Paste your JWT token here..."></textarea>
+        </div>
+        <button id="validateTokenBtn" onclick="validateToken()" class="btn-success">Validate Token</button>
+        <button id="clearTokenBtn" onclick="clearToken()" class="btn-warning">Clear Token</button>
+
+        <div style="margin-top: 15px;">
+            <p><span id="authStatusIndicator" class="status-indicator status-unauthenticated"></span>Status: <span
+                    id="authStatus">Not Authenticated</span></p>
+        </div>
+    </div>
+
+    <div id="userInfoSection" class="card user-info-section" style="display: none;">
+        <h3>User Information</h3>
+        <div id="userInfo" class="user-info">
+            <!-- User info will be populated here -->
+        </div>
+    </div>
+
+    <div id="transactionSection" class="card transaction-section" style="display: none;">
+        <h3>Create Transaction</h3>
+        <div class="form-group">
+            <label for="depositAmount">Amount:</label>
+            <input type="number" id="depositAmount" placeholder="100.00" value="100.00" step="0.01" min="0.01">
+        </div>
+        <button id="createDepositBtn" onclick="createDeposit()" class="btn-success">Create Deposit</button>
+        <button id="checkHealthBtn" onclick="checkHealth()">Check Health</button>
+        <button id="getMetricsBtn" onclick="getMetrics()">Get Metrics</button>
+    </div>
+
+    <div id="mainContent" style="display: none;">
+        <div class="two-column">
+            <div class="card">
+                <h3>Transactions</h3>
+                <div id="transactionsList">
+                    <p>No transactions created yet. Click "Create Deposit" to start.</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Connection Status</h3>
+                <div class="metrics">
+                    <p><span id="statusIndicator" class="status-indicator status-disconnected"></span>Status: <span
+                            id="status">Disconnected</span></p>
+                    <p>Current Transaction: <span id="currentTransactionId">None</span></p>
+                    <p>Connection ID: <span id="connectionId">N/A</span></p>
+                    <p>Reconnect Attempts: <span id="reconnectAttempts">0</span></p>
+                </div>
+
+                <div id="sseControls">
+                    <button id="disconnectBtn" onclick="disconnectSSE()" class="btn-danger">Disconnect SSE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Event Log</h3>
+        <div class="event-log" id="eventLog">
+            <div class="event">Ready to authenticate and create transactions...</div>
+        </div>
+        <button onclick="clearLog()" class="btn-warning">Clear Log</button>
+    </div>
+</div>
+
+<script>
+    let eventSource = null;
+    let currentUser = null;
+    let authToken = null;
+    let reconnectAttempts = 0;
+    let maxReconnectAttempts = 5;
+    let reconnectDelay = 1000;
+    let currentConnectionId = null;
+    let currentTransactionId = null;
+    let transactions = new Map(); // Store transactions by ID
+
+    function updateAuthStatus(isAuthenticated, message = '') {
+        const indicator = document.getElementById('authStatusIndicator');
+        const status = document.getElementById('authStatus');
+
+        if (isAuthenticated) {
+            indicator.className = 'status-indicator status-authenticated';
+            status.textContent = 'Authenticated';
+            // Show authenticated sections
+            document.getElementById('userInfoSection').style.display = 'block';
+            document.getElementById('transactionSection').style.display = 'block';
+            document.getElementById('mainContent').style.display = 'block';
+        } else {
+            indicator.className = 'status-indicator status-unauthenticated';
+            status.textContent = message || 'Not Authenticated';
+            // Hide authenticated sections
+            document.getElementById('userInfoSection').style.display = 'none';
+            document.getElementById('transactionSection').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'none';
+        }
+    }
+
+    function updateStatus(status, isConnected = false) {
+        document.getElementById('status').textContent = status;
+
+        const indicator = document.getElementById('statusIndicator');
+        indicator.className = 'status-indicator ' + (isConnected ? 'status-connected' : 'status-disconnected');
+
+        if (status.includes('Connecting')) {
+            indicator.className = 'status-indicator status-connecting';
+        }
+
+        document.getElementById('reconnectAttempts').textContent = reconnectAttempts;
+    }
+
+    function addEvent(message, type = 'info') {
+        const eventLog = document.getElementById('eventLog');
+        const eventDiv = document.createElement('div');
+        eventDiv.className = `event ${type}`;
+        eventDiv.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+        eventLog.appendChild(eventDiv);
+        eventLog.scrollTop = eventLog.scrollHeight;
+    }
+
+    function clearLog() {
+        document.getElementById('eventLog').innerHTML = '<div class="event">Event log cleared.</div>';
+    }
+
+    function getHeaders() {
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+
+        authToken = document.getElementById('bearerToken').value.trim();
+
+        if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
+        // Add country and state headers
+        const countryCode = document.getElementById('countryCode').value.trim();
+        const stateCode = document.getElementById('stateCode').value.trim();
+
+        if (countryCode) {
+            headers['X-Country-Iso2'] = countryCode;
+        }
+
+        if (stateCode) {
+            headers['X-State-Iso2'] = stateCode;
+        }
+
+        return headers;
+    }
+
+    function buildSSEUrl(transactionId) {
+        const baseUrl = document.getElementById('sseApiEndpoint').value;
+        const countryCode = document.getElementById('countryCode').value.trim();
+        const stateCode = document.getElementById('stateCode').value.trim();
+        const authToken = document.getElementById('bearerToken').value.trim();
+
+        // Build URL with query parameters since EventSource doesn't support headers
+        const url = new URL(`${baseUrl}/${transactionId}`);
+
+        if (countryCode) {
+            url.searchParams.set('country', countryCode);
+        }
+
+        if (stateCode) {
+            url.searchParams.set('state', stateCode);
+        }
+
+        // Pass JWT token as query parameter - required for EventSource authentication
+        if (authToken) {
+            url.searchParams.set('authorization', authToken);
+        }
+
+        return url.toString();
+    }
+
+    async function validateToken() {
+        const token = document.getElementById('bearerToken').value.trim();
+        if (!token) {
+            addEvent('Please enter a JWT token', 'error');
+            updateAuthStatus(false, 'No token provided');
+            return;
+        }
+
+        try {
+            addEvent('Validating JWT token...');
+
+            const headers = getHeaders();
+
+            const response = await fetch('http://localhost:8080/api/v1/user/info', {
+                method: 'GET',
+                headers: headers
+            });
+
+            if (response.ok) {
+                const userInfo = await response.json();
+                authToken = token;
+                currentUser = userInfo;
+
+                updateAuthStatus(true);
+                displayUserInfo(userInfo);
+                addEvent('Authentication successful!', 'success');
+            } else {
+                const error = await response.text();
+                addEvent(`Authentication failed: ${error}`, 'error');
+                updateAuthStatus(false, 'Authentication failed');
+                authToken = null;
+                currentUser = null;
+            }
+        } catch (error) {
+            addEvent(`Network error during authentication: ${error.message}`, 'error');
+            updateAuthStatus(false, 'Network error');
+            authToken = null;
+            currentUser = null;
+        }
+    }
+
+    function clearToken() {
+        document.getElementById('bearerToken').value = '';
+        authToken = null;
+        currentUser = null;
+        updateAuthStatus(false);
+        document.getElementById('userInfo').innerHTML = '';
+        transactions.clear();
+        updateTransactionsList();
+        disconnectSSE();
+        addEvent('Authentication cleared', 'warning');
+    }
+
+    function displayUserInfo(userInfo) {
+        const container = document.getElementById('userInfo');
+
+        let rolesHtml = '';
+        if (userInfo.roles && userInfo.roles.length > 0) {
+            rolesHtml = userInfo.roles.map(role => `<span class="role-badge">${role}</span>`).join(' ');
+        }
+
+        const html = `
+            <div class="user-info-item">
+                <span class="user-info-label">User ID:</span>
+                <span class="user-info-value">${userInfo.user_id || 'N/A'}</span>
+            </div>
+            <div class="user-info-item">
+                <span class="user-info-label">Username:</span>
+                <span class="user-info-value">${userInfo.preferred_username || 'N/A'}</span>
+            </div>
+            <div class="user-info-item">
+                <span class="user-info-label">Email:</span>
+                <span class="user-info-value">${userInfo.email || 'N/A'}</span>
+            </div>
+            <div class="user-info-item">
+                <span class="user-info-label">Name:</span>
+                <span class="user-info-value">${userInfo.name || 'N/A'}</span>
+            </div>
+            <div class="user-info-item">
+                <span class="user-info-label">Email Verified:</span>
+                <span class="user-info-value">${userInfo.email_verified ? 'Yes' : 'No'}</span>
+            </div>
+            <div class="user-info-item">
+                <span class="user-info-label">Primary Role:</span>
+                <span class="user-info-value">${userInfo.role || 'None'}</span>
+            </div>
+            <div class="user-info-item">
+                <span class="user-info-label">Client Token:</span>
+                <span class="user-info-value">${userInfo.is_client_token ? 'Yes' : 'No'}</span>
+            </div>
+            <div class="user-info-item">
+                <span class="user-info-label">Country:</span>
+                <span class="user-info-value">${userInfo.country || 'N/A'}</span>
+            </div>
+            <div class="user-info-item">
+                <span class="user-info-label">State:</span>
+                <span class="user-info-value">${userInfo.state || 'N/A'}</span>
+            </div>
+            <div class="user-info-item">
+                <span class="user-info-label">Token Expires:</span>
+                <span class="user-info-value">${userInfo.expires_at ? new Date(userInfo.expires_at * 1000).toLocaleString() : 'N/A'}</span>
+            </div>
+            ${rolesHtml ? `<div class="user-info-item"><span class="user-info-label">All Roles:</span><div style="margin-top: 5px;">${rolesHtml}</div></div>` : ''}
+        `;
+
+        container.innerHTML = html;
+    }
+
+    async function createDeposit() {
+        if (!authToken) {
+            addEvent('Please authenticate first', 'error');
+            return;
+        }
+
+        try {
+            const amount = parseFloat(document.getElementById('depositAmount').value);
+
+            if (isNaN(amount) || amount <= 0) {
+                addEvent('Please enter a valid amount', 'error');
+                return;
+            }
+
+            addEvent('Creating deposit transaction...');
+
+            const headers = getHeaders();
+            const apiUrl = document.getElementById('restApiEndpoint').value;
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    amount: amount
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                const transaction = result.transaction;
+
+                // Store transaction
+                transactions.set(transaction.id, transaction);
+                updateTransactionsList();
+
+                addEvent(`Deposit created: ${transaction.id} - Amount: ${transaction.amount}`, 'success');
+
+                // Auto-connect to SSE for this transaction
+                connectToTransactionSSE(transaction.id);
+
+            } else {
+                const error = await response.text();
+                addEvent(`Deposit failed: ${error}`, 'error');
+            }
+        } catch (error) {
+            addEvent(`Network error: ${error.message}`, 'error');
+        }
+    }
+
+    function connectToTransactionSSE(transactionId, isReconnect = false) {
+        if (!authToken) {
+            addEvent('Authentication required for SSE connection', 'error');
+            return;
+        }
+
+        if (eventSource) {
+            eventSource.close();
+        }
+
+        currentTransactionId = transactionId;
+        document.getElementById('currentTransactionId').textContent = transactionId;
+
+        const url = buildSSEUrl(transactionId);
+
+        if (!isReconnect) {
+            addEvent(`Connecting to SSE for transaction: ${transactionId}`);
+            addEvent(`SSE URL: ${url}`);
+            reconnectAttempts = 0;
+        } else {
+            addEvent(`Attempting reconnection ${reconnectAttempts + 1}/${maxReconnectAttempts}...`);
+        }
+
+        updateStatus('Connecting...');
+
+        // Create EventSource
+        eventSource = new EventSource(url);
+
+        eventSource.onopen = function (event) {
+            updateStatus('Connected', true);
+            const message = isReconnect ? 'Reconnected to transaction SSE stream' : 'Connected to transaction SSE stream';
+            addEvent(message, 'success');
+            reconnectAttempts = 0;
+            reconnectDelay = 1000;
+        };
+
+        eventSource.onmessage = function (event) {
+            try {
+                const data = JSON.parse(event.data);
+                addEvent(`Message: ${JSON.stringify(data, null, 2)}`);
+            } catch (e) {
+                addEvent(`Raw message: ${event.data}`);
+            }
+        };
+
+        eventSource.addEventListener('connected', function (event) {
+            try {
+                const data = JSON.parse(event.data);
+                currentConnectionId = data.connection_id;
+                document.getElementById('connectionId').textContent = currentConnectionId || 'N/A';
+                addEvent(`SSE Connected: ${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (e) {
+                addEvent(`Connected: ${event.data}`, 'success');
+            }
+        });
+
+        eventSource.addEventListener('heartbeat', function (event) {
+            // Log heartbeat occasionally to avoid spam
+            if (Math.random() < 0.05) { // 5% chance to log
+                addEvent('Heartbeat received (connection alive)');
+            }
+        });
+
+        eventSource.addEventListener('transaction.current', function (event) {
+            try {
+                const data = JSON.parse(event.data);
+                const transaction = data.transaction;
+
+                // Update stored transaction
+                transactions.set(transaction.id, transaction);
+                updateTransactionsList();
+
+                addEvent(`Current Transaction Status: ${transaction.status.toUpperCase()} - ${data.message || 'Status retrieved'}`, 'success');
+            } catch (e) {
+                addEvent(`Current Transaction: ${event.data}`, 'success');
+            }
+        });
+
+        eventSource.addEventListener('transaction.created', function (event) {
+            try {
+                const data = JSON.parse(event.data);
+                const transaction = data.transaction;
+
+                // Update stored transaction
+                transactions.set(transaction.id, transaction);
+                updateTransactionsList();
+
+                addEvent(`Transaction Created: ${transaction.id} - ${data.message || 'Transaction created'}`, 'success');
+            } catch (e) {
+                addEvent(`Transaction Created: ${event.data}`, 'success');
+            }
+        });
+
+        eventSource.addEventListener('transaction.status_updated', function (event) {
+            try {
+                const data = JSON.parse(event.data);
+                const transaction = data.transaction;
+
+                // Update stored transaction
+                transactions.set(transaction.id, transaction);
+                updateTransactionsList();
+
+                addEvent(`Status Update: ${transaction.status.toUpperCase()} - ${data.message || 'Status updated'}`, 'warning');
+            } catch (e) {
+                addEvent(`Status Update: ${event.data}`, 'warning');
+            }
+        });
+
+        eventSource.addEventListener('transaction.completed', function (event) {
+            try {
+                const data = JSON.parse(event.data);
+                const transaction = data.transaction;
+
+                // Update stored transaction
+                transactions.set(transaction.id, transaction);
+                updateTransactionsList();
+
+                addEvent(`Transaction Completed: ${transaction.id} - ${data.message || 'Transaction completed successfully'}`, 'success');
+            } catch (e) {
+                addEvent(`Transaction Completed: ${event.data}`, 'success');
+            }
+        });
+
+        eventSource.addEventListener('transaction.failed', function (event) {
+            try {
+                const data = JSON.parse(event.data);
+                const transaction = data.transaction;
+
+                // Update stored transaction
+                transactions.set(transaction.id, transaction);
+                updateTransactionsList();
+
+                addEvent(`Transaction Failed: ${transaction.id} - ${data.message || 'Transaction failed'}`, 'error');
+            } catch (e) {
+                addEvent(`Transaction Failed: ${event.data}`, 'error');
+            }
+        });
+
+        eventSource.onerror = function (event) {
+            console.error('SSE error:', event);
+
+            if (eventSource.readyState === EventSource.CLOSED) {
+                updateStatus('Connection Closed', false);
+                addEvent('Connection closed by server', 'error');
+                currentConnectionId = null;
+                document.getElementById('connectionId').textContent = 'N/A';
+
+                // Attempt automatic reconnection
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    addEvent(`Reconnecting in ${reconnectDelay / 1000} seconds...`);
+
+                    setTimeout(() => {
+                        connectToTransactionSSE(transactionId, true);
+                    }, reconnectDelay);
+
+                    reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+                } else {
+                    addEvent('Max reconnection attempts reached. Create a new transaction to reconnect.', 'error');
+                    updateStatus('Disconnected - Manual reconnect needed', false);
+                }
+            } else if (eventSource.readyState === EventSource.CONNECTING) {
+                updateStatus('Connection Error - Retrying', false);
+                addEvent('Connection error during establishment', 'error');
+            } else {
+                updateStatus('Connection Error', false);
+                addEvent('SSE connection error', 'error');
+            }
+        };
+    }
+
+    function disconnectSSE() {
+        if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+            updateStatus('Disconnected', false);
+            addEvent('Disconnected from SSE stream', 'warning');
+            currentConnectionId = null;
+            currentTransactionId = null;
+            document.getElementById('connectionId').textContent = 'N/A';
+            document.getElementById('currentTransactionId').textContent = 'None';
+            reconnectAttempts = 0;
+        }
+    }
+
+    function updateTransactionsList() {
+        const container = document.getElementById('transactionsList');
+
+        if (transactions.size === 0) {
+            container.innerHTML = '<p>No transactions created yet. Click "Create Deposit" to start.</p>';
+            return;
+        }
+
+        let html = '';
+        const sortedTransactions = Array.from(transactions.values()).sort((a, b) =>
+            new Date(b.created_at) - new Date(a.created_at)
+        );
+
+        sortedTransactions.forEach(transaction => {
+            html += `
+                <div class="transaction-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span class="transaction-id">${transaction.id}</span>
+                        <span class="status-badge status-${transaction.status}">${transaction.status}</span>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <strong>Amount:</strong> ${transaction.amount}
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <strong>User:</strong> ${transaction.user_id}
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <strong>Created:</strong> ${new Date(transaction.created_at).toLocaleString()}
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <strong>Updated:</strong> ${new Date(transaction.updated_at).toLocaleString()}
+                    </div>
+                    ${transaction.description ? `<div style="margin-bottom: 8px;"><strong>Description:</strong> ${transaction.description}</div>` : ''}
+                    ${transaction.reference ? `<div style="margin-bottom: 8px;"><strong>Reference:</strong> ${transaction.reference}</div>` : ''}
+                    <div style="margin-top: 10px;">
+                        <button onclick="connectToTransactionSSE('${transaction.id}')" class="btn-success" style="font-size: 12px; padding: 5px 10px;">
+                            ${currentTransactionId === transaction.id ? 'Reconnect' : 'Monitor'} SSE
+                        </button>
+                        <button onclick="fetchTransactionDetails('${transaction.id}')" style="font-size: 12px; padding: 5px 10px;">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    async function fetchTransactionDetails(transactionId) {
+        if (!authToken) {
+            addEvent('Authentication required', 'error');
+            return;
+        }
+
+        try {
+            addEvent(`Fetching details for transaction: ${transactionId}`);
+
+            const headers = getHeaders();
+            delete headers['Content-Type']; // GET request doesn't need content-type
+
+            const response = await fetch(`http://localhost:8080/api/v1/transactions/${transactionId}`, {
+                method: 'GET',
+                headers: headers
+            });
+
+            if (response.ok) {
+                const transaction = await response.json();
+                transactions.set(transaction.id, transaction);
+                updateTransactionsList();
+                addEvent(`Transaction details refreshed: ${transactionId}`, 'success');
+            } else {
+                const error = await response.text();
+                addEvent(`Failed to fetch transaction details: ${error}`, 'error');
+            }
+        } catch (error) {
+            addEvent(`Network error fetching transaction: ${error.message}`, 'error');
+        }
+    }
+
+    async function checkHealth() {
+        try {
+            const response = await fetch('http://localhost:9090/health');
+            const result = await response.json();
+
+            if (response.ok) {
+                addEvent(`Health check: ${JSON.stringify(result, null, 2)}`, 'success');
+            } else {
+                addEvent(`Health check failed: ${JSON.stringify(result, null, 2)}`, 'error');
+            }
+        } catch (error) {
+            addEvent(`Health check error: ${error.message}`, 'error');
+        }
+    }
+
+    async function getMetrics() {
+        try {
+            const response = await fetch('http://localhost:9090/metrics');
+            const result = await response.json();
+
+            if (response.ok) {
+                addEvent(`Metrics: ${JSON.stringify(result, null, 2)}`, 'success');
+            } else {
+                addEvent(`Metrics failed: ${JSON.stringify(result, null, 2)}`, 'error');
+            }
+        } catch (error) {
+            addEvent(`Metrics error: ${error.message}`, 'error');
+        }
+    }
+
+    // Auto-load message
+    window.addEventListener('load', function () {
+        addEvent('Transaction SSE Client loaded. Please authenticate with your JWT token to access features.');
+        updateAuthStatus(false);
+    });
+
+    // Auto-validate token on page load if one exists
+    window.addEventListener('load', function () {
+        const token = document.getElementById('bearerToken').value.trim();
+        if (token) {
+            validateToken();
+        }
+    });
+</script>
+</body>
+</html>
